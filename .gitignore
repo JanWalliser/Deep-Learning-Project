@@ -1,0 +1,115 @@
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*~
+
+# =========================
+# Python / Build artifacts
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.cache/
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# =========================
+# Logs / runs / outputs
+# =========================
+outputs/
+logs/
+*.log
+
+# TensorBoard
+runs/
+tb_runs/
+
+# =========================
+# Weights & Biases
+# =========================
+wandb/
+# If you store offline runs:
+wandb_offline/
+
+# =========================
+# Data (MNIST download + processed indices)
+# =========================
+data/raw/
+data/processed/
+data/artifacts/
+
+# If you prefer to keep directory structure but ignore files:
+# data/raw/**
+# data/processed/**
+# data/artifacts/**
+
+# =========================
+# Model checkpoints / artifacts
+# =========================
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Temporary / misc
+# =========================
+tmp/
+temp/
+*.tmp
+*.bak
+
+# =========================
+# LaTeX (if you write reports in repo)
+# =========================
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
