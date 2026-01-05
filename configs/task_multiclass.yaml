@@ -1,0 +1,5 @@
+task:
+  mode: multiclass
+
+model:
+  num_classes: 10

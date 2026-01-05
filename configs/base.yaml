@@ -1,23 +1,33 @@
 seed: 42
 device: auto
 
+task:
+  mode: binary
+  digits: [1, 7]
+  positive_digit: 7
+
 data:
-  root: data/raw
-  num_workers: 2
+  root: "./data"
   batch_size: 128
+  num_workers: 4
   val_split: 0.1
-
-training:
-  epochs: 2
-  lr: 1e-3
-  weight_decay: 0.0
-
-logging:
-  use_wandb: true
-  project: dl-class-imbalance-mnist
-  entity: null
-  run_name: null
 
 model:
   name: fc
-  num_classes: 10
+  num_classes: 2
+  hidden_sizes: [256, 128]
+  dropout: 0.1
+
+training:
+  epochs: 10
+  lr: 0.01
+  weight_decay: 0.0
+  optimizer:
+    name: sgd
+    momentum: 0.9
+
+logging:
+  use_wandb: true
+  project: "dl-class-imbalance"
+  entity: null
+  run_name: null

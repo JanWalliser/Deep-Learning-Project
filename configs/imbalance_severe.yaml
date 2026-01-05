@@ -1,0 +1,7 @@
+imbalance:
+  setting: severe
+  major_digit: 1
+  minor_digit: 7
+  n_major: 30000
+  n_minor: 300
+  other_digits_policy: uniform_subsample
