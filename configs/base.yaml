@@ -8,7 +8,7 @@ task:
 
 data:
   root: "./data"
-  batch_size: 128
+  batch_size: 512
   num_workers: 4
   val_split: 0.1
 
