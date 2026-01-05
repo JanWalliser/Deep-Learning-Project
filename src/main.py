@@ -34,11 +34,7 @@ def main():
 
     model = build_model(cfg).to(device)
 
-    train(model, train_loader, val_loader, device,
-          epochs=cfg["training"]["epochs"],
-          lr=cfg["training"]["lr"],
-          weight_decay=cfg["training"]["weight_decay"],
-          wandb_run=run)
+    train(model, train_loader, val_loader, device, cfg=cfg, wandb_run=run)
 
     test_metrics = evaluate(model, test_loader, device)
     if run is not None:
