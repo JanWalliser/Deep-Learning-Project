@@ -8,7 +8,7 @@ task:
 
 data:
   root: "./data"
-  batch_size: 512
+  batch_size: 256 #smaller for better sgd. Was 512
   num_workers: 4
   val_split: 0.1
 
@@ -19,12 +19,17 @@ model:
   dropout: 0.1
 
 training:
-  epochs: 10
+  epochs: 60
   lr: 0.01
   weight_decay: 0.0
   optimizer:
     name: sgd
     momentum: 0.9
+  log_every_steps: 50
+  log_grads: true
+  log_tables: true
+  max_table_items: 24
+
 
 logging:
   use_wandb: true

@@ -2,7 +2,7 @@ imbalance:
   setting: moderate
   major_digit: 1
   minor_digit: 7
-  n_major: 30000
-  n_minor: 3000
-  n_total: 45000
+  n_major: 5000
+  n_minor: 1000
+  n_total: 6000
   other_digits_policy: uniform_subsample
