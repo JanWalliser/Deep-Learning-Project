@@ -1,12 +1,13 @@
-
 from __future__ import annotations
-from dataclasses import dataclass
+
 from typing import Dict, List, Sequence
 import numpy as np
 import torch
 
+
 def _rng(seed: int) -> np.random.Generator:
     return np.random.default_rng(seed)
+
 
 def sample_indices(pool: Sequence[int], n: int, rng: np.random.Generator, replace: bool) -> List[int]:
     pool = list(pool)
@@ -18,6 +19,7 @@ def sample_indices(pool: Sequence[int], n: int, rng: np.random.Generator, replac
         raise ValueError(f"Requested n={n} without replacement but only {len(pool)} available.")
     chosen = rng.choice(pool, size=n, replace=replace)
     return [int(i) for i in chosen.tolist()]
+
 
 def apply_imbalance_to_train_indices(
     train_indices: Sequence[int],
@@ -46,23 +48,38 @@ def apply_imbalance_to_train_indices(
     replace = bool(imb.get("sample_with_replacement", True))
     policy = imb.get("other_digits_policy", "keep_all")
 
-    train_set = set(int(i) for i in train_indices)
-    pools: Dict[int, List[int]] = {d: [] for d in range(10)}
+    # Determine which digits actually appear in the current train split
+    present_digits = sorted({int(targets[int(idx)]) for idx in train_indices})
+
+    # Build pools only for present digits (robust for binary filtered datasets)
+    pools: Dict[int, List[int]] = {d: [] for d in present_digits}
     for idx in train_indices:
         d = int(targets[int(idx)])
         pools[d].append(int(idx))
 
-    out = []
+    # Safety: major/minor must exist in this split
+    if major not in pools or minor not in pools:
+        raise ValueError(
+            f"Imbalance config expects major={major}, minor={minor}, "
+            f"but present digits in train split are {present_digits}."
+        )
+
+    out: List[int] = []
     out += sample_indices(pools[major], n_major, rng, replace=replace)
     out += sample_indices(pools[minor], n_minor, rng, replace=replace)
 
-    other_digits = [d for d in range(10) if d not in (major, minor)]
+    other_digits = [d for d in present_digits if d not in (major, minor)]
 
     if policy == "keep_all":
         for d in other_digits:
             out += pools[d]
 
     elif policy == "uniform_subsample":
+        # If there are no other digits (typical for binary 1vs7), just skip this part.
+        if len(other_digits) == 0:
+            rng.shuffle(out)
+            return out
+
         n_other = imb.get("n_other", None)
         n_total = imb.get("n_total", None)
 
