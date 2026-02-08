@@ -1,11 +1,12 @@
 # src/training/trainer.py
 from __future__ import annotations
 
-import traceback
 import torch
 from torch.nn import functional as F
 
-from src.logging.wandb_logger import log, config_update
+from src.logging.wandb_logger import config_update
+from src.training.eval import evaluate
+from src.training.wandb_callbacks import WandbCallbacks
 
 
 def _as_tuple2(x, default=(0.9, 0.999)):
@@ -43,33 +44,7 @@ def build_optimizer(model: torch.nn.Module, training_cfg: dict) -> torch.optim.O
     raise ValueError(f"Unknown optimizer name: {name!r}. Use one of: sgd, adam, adamw.")
 
 
-@torch.no_grad()
-def evaluate(model, loader, device, collect_outputs: bool = False):
-    model.eval()
-    total_loss, correct, n = 0.0, 0, 0
-
-    all_y, all_pred, all_logits = [], [], []
-
-    for x, y in loader:
-        x, y = x.to(device), y.to(device)
-        logits = model(x)
-        loss = F.cross_entropy(logits, y)
-
-        total_loss += loss.item() * x.size(0)
-        pred = logits.argmax(dim=1)
-        correct += (pred == y).sum().item()
-        n += x.size(0)
-
-        if collect_outputs:
-            all_y.append(y.detach().cpu())
-            all_pred.append(pred.detach().cpu())
-            all_logits.append(logits.detach().cpu())
-
-    metrics = {"loss": total_loss / n, "acc": correct / n}
-    if not collect_outputs:
-        return metrics
-
-    return metrics, torch.cat(all_y), torch.cat(all_pred), torch.cat(all_logits)
+__all__ = ["build_optimizer", "evaluate", "train"]
 
 
 def train(model, train_loader, val_loader, device, cfg: dict, wandb_run=None):
@@ -77,12 +52,7 @@ def train(model, train_loader, val_loader, device, cfg: dict, wandb_run=None):
     epochs = int(training_cfg["epochs"])
     opt = build_optimizer(model, training_cfg)
 
-    log_every_steps = int(training_cfg.get("log_every_steps", 50))
-    log_grads = bool(training_cfg.get("log_grads", True))
-    log_tables = bool(training_cfg.get("log_tables", True))
-    max_table_items = int(training_cfg.get("max_table_items", 24))
-
-    num_classes = int(cfg["model"]["num_classes"])
+    callbacks = WandbCallbacks(wandb_run, cfg=cfg, device=device)
 
     # Put mapping into config once (binary)
     if wandb_run is not None and cfg.get("task", {}).get("mode") == "binary":
@@ -105,68 +75,19 @@ def train(model, train_loader, val_loader, device, cfg: dict, wandb_run=None):
             logits = model(x)
             loss = F.cross_entropy(logits, y)
             loss.backward()
-
-            if wandb_run is not None and log_grads and (global_step % log_every_steps == 0):
-                from src.viz.gradients import compute_grad_stats
-
-                g_norm, gwr, _, _ = compute_grad_stats(model)
-                log(wandb_run, {"grad/global_norm": float(g_norm), "grad/global_gwr": float(gwr), "epoch": epoch}, step=global_step)
-
             opt.step()
 
-            if wandb_run is not None and (global_step % log_every_steps == 0):
-                log(wandb_run, {"train/loss": float(loss.item()), "epoch": epoch}, step=global_step)
+            callbacks.on_train_step(model=model, loss=loss, global_step=global_step, epoch=epoch)
 
             global_step += 1
 
-        # ---- end epoch validation
-        if wandb_run is None:
-            _ = evaluate(model, val_loader, device)
-            continue
-
-        val_metrics, y_true, y_pred, val_logits = evaluate(model, val_loader, device, collect_outputs=True)
-        log(wandb_run, {f"val/{k}": float(v) for k, v in val_metrics.items()} | {"epoch": epoch}, step=global_step)
-
-        # ---- metrics derived from confusion matrix
-        from src.metrics.classification import confusion_matrix, per_class_recall_from_cm, normalize_confusion_matrix
-
-        cm = confusion_matrix(y_true, y_pred, num_classes=num_classes)
-        recall = per_class_recall_from_cm(cm)
-        for c in range(num_classes):
-            log(wandb_run, {f"val/recall_class_{c}": float(recall[c].item())}, step=global_step)
-
-        # ---- confusion matrix media + tables
-        try:
-            from src.viz.plots import plot_confusion_matrix
-            from src.viz.wandb_media import log_confusion_matrix_image, log_confusion_matrix_plot, log_prediction_tables
-            from src.viz.predictions import collect_predictions, split_examples
-
-            run_id = wandb_run.id
-
-            log_confusion_matrix_image(
-                wandb_run,
-                cm=cm,
-                epoch=epoch,
-                step=global_step,
-                run_id=run_id,
-                normalize_fn=normalize_confusion_matrix,
-                plot_fn=plot_confusion_matrix,
-            )
-            log_confusion_matrix_plot(
-                wandb_run,
-                y_true=y_true,
-                y_pred=y_pred,
-                class_names=[str(i) for i in range(num_classes)],
-                step=global_step,
-            )
-
-            if log_tables:
-                examples = collect_predictions(model, val_loader, device, max_items=2000)
-                parts = split_examples(examples)
-                log_prediction_tables(wandb_run, parts, step=global_step, max_wrong=max_table_items)
-
-        except Exception:
-            print("[VAL MEDIA LOGGING] failed:")
-            traceback.print_exc()
+        # ---- end epoch callbacks (evaluation, confusion matrix, examples, classwise gradients)
+        callbacks.on_epoch_end(
+            model=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            epoch=epoch,
+            global_step=global_step,
+        )
 
     return model
