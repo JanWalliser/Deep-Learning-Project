@@ -31,6 +31,19 @@ training:
   max_table_items: 24
 
 
+analysis:
+  wrong_highconf_k: 5
+
+  classwise_grads:
+    enable: true
+    source: train          # train | val
+    max_samples: 2048
+    min_per_class: 16
+    include_params: null   # null = all params
+    compute_subspace_angles: true
+    subspace_rank: 16
+
+
 logging:
   use_wandb: true
   project: "dl-class-imbalance"
