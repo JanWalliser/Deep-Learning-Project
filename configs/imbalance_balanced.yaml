@@ -4,5 +4,5 @@ imbalance:
   minor_digit: 7
   n_major: 5000
   n_minor: 5000
-  n_total: 10000
+  n_other: 5000
   other_digits_policy: uniform_subsample

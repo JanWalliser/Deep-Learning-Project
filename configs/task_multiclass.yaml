@@ -1,5 +1,9 @@
 task:
   mode: multiclass
+  digits: [0,1,2,3,4,5,6,7,8,9]
+  positive_digit: 7
 
+data:
+  batch_size: 128
 model:
   num_classes: 10

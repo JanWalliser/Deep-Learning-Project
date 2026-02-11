@@ -1,6 +1,6 @@
 model:
   name: cnn
   in_channels: 1
-  channels: (32, 64)
+  channels: [32, 64]
   fc_dim: 128
   dropout: 0.25
