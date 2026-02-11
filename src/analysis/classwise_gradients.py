@@ -258,7 +258,8 @@ def compute_classwise_gradient_diagnostics(
     #   ΔL_min ≈ -lr * (g_min · g_maj)
     harm_score = None
     if lr_for_harm_score is not None:
-        harm_score = float((-float(lr_for_harm_score)) * float(dot_min_maj))
+        lr_val = float(lr_for_harm_score)
+        harm_score = float((-lr_val) * float(dot_min_maj.detach().item()))
 
     scalars = {
         "classwise_grad/maj_count": float(G_maj.shape[0]),
@@ -285,10 +286,11 @@ def compute_classwise_gradient_diagnostics(
         k = max(1, min(k, min(A.shape[0], B.shape[0], A.shape[1])))
 
         # compute orthonormal bases via SVD (economic)
-        Ua = torch.linalg.svd(A, full_matrices=False).U[:, :k]
-        Ub = torch.linalg.svd(B, full_matrices=False).U[:, :k]
-        # singular values of Ua^T Ub are cos(principal angles)
-        M = Ua.T @ Ub
+        Vha = torch.linalg.svd(A, full_matrices=False).Vh  # (ra x P)
+        Vhb = torch.linalg.svd(B, full_matrices=False).Vh  # (rb x P)
+        Va = Vha[:k, :].T  # (P x k)
+        Vb = Vhb[:k, :].T  # (P x k)
+        M = Va.T @ Vb       # (k x k)
         s = torch.linalg.svdvals(M).clamp(min=0.0, max=1.0)
         principal_angles = torch.arccos(s)
 
