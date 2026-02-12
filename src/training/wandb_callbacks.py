@@ -105,6 +105,27 @@ class WandbCallbacks:
         # --- evaluate
         from src.training.eval import evaluate
 
+
+        val_metrics, y_true, y_pred, val_logits = evaluate(model, val_loader, self.device, collect_outputs=True)
+
+        # --- PR-AUC (binary only): needs per-sample scores (probabilities)
+        if self.cfg.get("task", {}).get("mode") == "binary" and self.num_classes == 2:
+            try:
+                from sklearn.metrics import average_precision_score
+
+                # y_true: shape (N,), values {0,1}
+                # val_logits: shape (N,2)
+                probs = torch.softmax(val_logits, dim=1)
+                p_pos = probs[:, 1]  # assumes label 1 is the positive/minority class
+
+                pr_auc = float(average_precision_score(y_true.numpy(), p_pos.numpy()))
+                val_metrics["pr_auc"] = pr_auc
+            except Exception:
+                print("[VAL PR-AUC] failed (is scikit-learn installed?):")
+                traceback.print_exc()
+
+        log(self.run, {f"val/{k}": float(v) for k, v in val_metrics.items()} | {"epoch": epoch}, step=global_step)
+
         val_metrics, y_true, y_pred, val_logits = evaluate(model, val_loader, self.device, collect_outputs=True)
         log(self.run, {f"val/{k}": float(v) for k, v in val_metrics.items()} | {"epoch": epoch}, step=global_step)
 
